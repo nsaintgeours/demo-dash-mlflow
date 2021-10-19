@@ -6,7 +6,7 @@ services:
     image: nathaliesaintgeours/demo:latest
     container_name: demo_dash_app
     ports:
-      - "3820:8050"
+      - "3820:8888"
     environment:
       - TARGET=LIVE
     restart: unless-stopped
