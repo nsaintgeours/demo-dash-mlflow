@@ -1,0 +1,59 @@
+name: Deploy to production server
+
+on:
+  workflow_dispatch
+
+env:
+    APP_NAME: demo
+    APP_VERSION: latest
+    DOCKER_USER: nathaliesaintgeours
+    DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+    SSH_HOST: 18.134.221.50
+    SSH_USERNAME: bitnami
+    SSH_KEY: ${{ secrets.AWS_LIGHTSAIL_SSH_KEY }}
+
+jobs:
+
+   publish_docker:
+     runs-on: ubuntu-latest
+
+     steps:
+     - uses: actions/checkout@v2
+
+     - name: Build Docker container
+       run: docker build -t $DOCKER_USER/$APP_NAME:$APP_VERSION .
+
+     - name: Docker login
+       run: docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+
+     - name: Publish dockerized app on Docker Hub
+       run: docker push $DOCKER_USER/$APP_NAME:$APP_VERSION
+
+   deploy_production:
+     runs-on: ubuntu-latest
+
+     needs: publish_docker
+
+     steps:
+     - uses: actions/checkout@v2
+
+     - name: Copy Docker Compose file to production server (through SSH)
+       uses: appleboy/scp-action@master
+       with:
+         host: $SSH_HOST
+         username: $SSH_USERNAME
+         key: $SSH_KEY
+         source: "docker-compose.yml"
+         target: "~"
+
+     - name: Run Docker containers on production server (through SSH)
+       uses: appleboy/ssh-action@master
+       with:
+         host: $SSH_HOST
+         username: $SSH_USERNAME
+         key: $SSH_KEY
+         script: |
+           cd ~
+           docker-compose down
+           docker-compose pull
+           docker-compose up -d

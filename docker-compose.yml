@@ -1,0 +1,12 @@
+version: "3.7"
+
+services:
+
+  demo_dash_app:
+    image: nathaliesaintgeours/demo:latest
+    container_name: demo_dash_app
+    ports:
+      - "3820:8050"
+    environment:
+      - TARGET=LIVE
+    restart: unless-stopped
