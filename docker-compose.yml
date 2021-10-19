@@ -3,16 +3,17 @@ version: "3.7"
 services:
 
   demo_dash_app:
-    image: nathaliesaintgeours/demo:latest
+    image: nathaliesaintgeours/demo:${APP_VERSION}
     container_name: demo_dash_app
     ports:
       - "3820:8888"
     environment:
       - TARGET=LIVE
+      - MODEL_API=${SSH_HOST}:5001
     restart: unless-stopped
 
   demo_mlflow_model:
-    image: nathaliesaintgeours/demo_mlflow_model:latest
+    image: nathaliesaintgeours/demo_mlflow_model:${MODEL_VERSION}
     container_name: demo_mlflow_model
     ports:
       - "5001:8080"

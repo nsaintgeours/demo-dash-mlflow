@@ -6,10 +6,13 @@ on:
 env:
     APP_NAME: demo
     APP_VERSION: latest
+
     MODEL_NAME: demo_mlflow_model
     MODEL_VERSION: latest
+
     DOCKER_USER: nathaliesaintgeours
     DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+
     SSH_HOST: 18.134.221.50
     SSH_USERNAME: bitnami
     SSH_KEY: ${{ secrets.AWS_LIGHTSAIL_SSH_KEY }}
@@ -83,8 +86,9 @@ jobs:
          host: $SSH_HOST
          username: $SSH_USERNAME
          key: $SSH_KEY
+         envs: APP_VERSION, MODEL_VERSION, SSH_HOST
          script: |
            cd ~
-           docker-compose down
-           docker-compose pull
-           docker-compose up -d
+           APP_VERSION=$APP_VERSION MODEL_VERSION=$MODEL_VERSION SSH_HOST=$SSH_HOST docker-compose down
+           APP_VERSION=$APP_VERSION MODEL_VERSION=$MODEL_VERSION SSH_HOST=$SSH_HOST docker-compose pull
+           APP_VERSION=$APP_VERSION MODEL_VERSION=$MODEL_VERSION SSH_HOST=$SSH_HOST docker-compose up -d
