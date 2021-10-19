@@ -6,6 +6,8 @@ on:
 env:
     APP_NAME: demo
     APP_VERSION: latest
+    MODEL_NAME: demo_mlflow_model
+    MODEL_VERSION: latest
     DOCKER_USER: nathaliesaintgeours
     DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
     SSH_HOST: 18.134.221.50
@@ -29,10 +31,39 @@ jobs:
      - name: Publish dockerized app on Docker Hub
        run: docker push $DOCKER_USER/$APP_NAME:$APP_VERSION
 
+   publish_mlflow_model:
+     runs-on: ubuntu-latest
+
+     steps:
+     - uses: actions/checkout@v2
+
+     - name: Set up Python 3.9
+       uses: actions/setup-python@v2
+       with:
+         python-version: 3.9
+
+     - name: Install mlflow
+       run: |
+         python -m pip install --upgrade pip
+         pip install mlflow
+
+     - name: Build Docker container from MLflow model
+       run: |
+         mlflow models build-docker -m  ${GITHUB_WORKSPACE}/mlflow_model -n "$MODEL_NAME"
+
+     - name: Docker login
+       run: |
+         docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+
+     - name: Publish dockerized model on Docker Hub
+       run: |
+         docker tag $MODEL_NAME $DOCKER_USER/$MODEL_NAME:$MODEL_VERSION
+         docker push $DOCKER_USER/$MODEL_NAME:$MODEL_VERSION
+
    deploy_production:
      runs-on: ubuntu-latest
 
-     needs: publish_docker
+     needs: [publish_docker, publish_mlflow_model]
 
      steps:
      - uses: actions/checkout@v2

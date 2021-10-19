@@ -10,3 +10,10 @@ services:
     environment:
       - TARGET=LIVE
     restart: unless-stopped
+
+  demo_mlflow_model:
+    image: nathaliesaintgeours/demo_mlflow_model:latest
+    container_name: demo_mlflow_model
+    ports:
+      - "5001:8050"
+    restart: unless-stopped
