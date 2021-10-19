@@ -6,7 +6,14 @@ services:
     image: nathaliesaintgeours/demo:latest
     container_name: demo_dash_app
     ports:
-      - "3820:8050"
+      - "3820:8888"
     environment:
       - TARGET=LIVE
+    restart: unless-stopped
+
+  demo_mlflow_model:
+    image: nathaliesaintgeours/demo_mlflow_model:latest
+    container_name: demo_mlflow_model
+    ports:
+      - "5001:8080"
     restart: unless-stopped
