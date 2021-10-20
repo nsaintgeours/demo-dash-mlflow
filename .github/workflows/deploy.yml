@@ -10,9 +10,9 @@ env:
     MODEL_VERSION: latest
     DOCKER_USER: nathaliesaintgeours
     DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
-    SSH_HOST: 18.134.221.50
-    SSH_USERNAME: bitnami
-    SSH_KEY: ${{ secrets.AWS_LIGHTSAIL_SSH_KEY }}
+    SSH_HOST: 3.134.91.223
+    SSH_USERNAME: ec2-user
+    SSH_KEY: ${{ secrets.AWS_EC2_SSH_KEY }}
 
 jobs:
 
