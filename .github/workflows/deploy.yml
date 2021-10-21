@@ -10,7 +10,7 @@ env:
     MODEL_VERSION: latest
     DOCKER_USER: nathaliesaintgeours
     DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
-    SSH_HOST: 3.134.91.223
+    SSH_HOST: 18.117.63.135
     SSH_USERNAME: ec2-user
     SSH_KEY: ${{ secrets.AWS_EC2_SSH_KEY }}
 
