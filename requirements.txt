@@ -2,3 +2,4 @@ dash
 mlflow
 numpy
 scikit-learn
+requests
