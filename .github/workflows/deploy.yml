@@ -13,9 +13,9 @@ env:
     DOCKER_USER: nathaliesaintgeours
     DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
 
-    SSH_HOST: 18.134.221.50
-    SSH_USERNAME: bitnami
-    SSH_KEY: ${{ secrets.AWS_LIGHTSAIL_SSH_KEY }}
+    SSH_HOST: 18.117.63.135
+    SSH_USERNAME: ec2-user
+    SSH_KEY: ${{ secrets.AWS_EC2_SSH_KEY }}
 
 jobs:
 
@@ -89,6 +89,7 @@ jobs:
          envs: APP_VERSION, MODEL_VERSION, SSH_HOST
          script: |
            cd ~
-           APP_VERSION=$APP_VERSION MODEL_VERSION=$MODEL_VERSION SSH_HOST=$SSH_HOST docker-compose down
-           APP_VERSION=$APP_VERSION MODEL_VERSION=$MODEL_VERSION SSH_HOST=$SSH_HOST docker-compose pull
-           APP_VERSION=$APP_VERSION MODEL_VERSION=$MODEL_VERSION SSH_HOST=$SSH_HOST docker-compose up -d
+           sudo service docker start
+           APP_VERSION=$APP_VERSION MODEL_VERSION=$MODEL_VERSION docker-compose down
+           APP_VERSION=$APP_VERSION MODEL_VERSION=$MODEL_VERSION docker-compose pull
+           APP_VERSION=$APP_VERSION MODEL_VERSION=$MODEL_VERSION docker-compose up -d
