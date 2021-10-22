@@ -1,8 +1,8 @@
 import mlflow
 import numpy as np
-from sklearn.dummy import DummyRegressor
+from sklearn.linear_model import LinearRegression
 
-model = DummyRegressor()
+model = LinearRegression()
 model.fit(
     X=np.random.rand(1000, 3),
     y=np.random.rand(1000, 1)
