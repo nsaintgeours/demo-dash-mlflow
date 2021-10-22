@@ -6,7 +6,7 @@ services:
     image: nathaliesaintgeours/demo:${APP_VERSION}
     container_name: demo_dashboard
     ports:
-      - "80:8050"
+      - "8050:8050"
     environment:
       - TARGET=LIVE
       - MODEL_API=http://model:8080/invocations
