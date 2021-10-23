@@ -1,4 +1,6 @@
-dash
-mlflow
 numpy
+dash
+dash_bootstrap_components
 scikit-learn
+mlflow
+requests

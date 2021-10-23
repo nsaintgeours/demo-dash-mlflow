@@ -6,10 +6,13 @@ on:
 env:
     APP_NAME: demo
     APP_VERSION: latest
+
     MODEL_NAME: demo_mlflow_model
     MODEL_VERSION: latest
+
     DOCKER_USER: nathaliesaintgeours
     DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+
     SSH_HOST: 18.117.63.135
     SSH_USERNAME: ec2-user
     SSH_KEY: ${{ secrets.AWS_EC2_SSH_KEY }}
@@ -83,8 +86,10 @@ jobs:
          host: $SSH_HOST
          username: $SSH_USERNAME
          key: $SSH_KEY
+         envs: APP_VERSION, MODEL_VERSION, SSH_HOST
          script: |
            cd ~
-           docker-compose down
-           docker-compose pull
-           docker-compose up -d
+           sudo service docker start
+           APP_VERSION=$APP_VERSION MODEL_VERSION=$MODEL_VERSION docker-compose down
+           APP_VERSION=$APP_VERSION MODEL_VERSION=$MODEL_VERSION docker-compose pull
+           APP_VERSION=$APP_VERSION MODEL_VERSION=$MODEL_VERSION docker-compose up -d
