@@ -23,4 +23,4 @@ def update_model_output(x1, x2, x3):
 
 
 if __name__ == '__main__':
-    app.run_server(host="0.0.0.0", port=8888, debug=True)
+    app.run_server(host="0.0.0.0", port=8050, debug=True)
