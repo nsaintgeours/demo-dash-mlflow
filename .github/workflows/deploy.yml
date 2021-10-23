@@ -90,6 +90,5 @@ jobs:
          script: |
            cd ~
            sudo service docker start
-           APP_VERSION=$APP_VERSION MODEL_VERSION=$MODEL_VERSION docker-compose down
-           APP_VERSION=$APP_VERSION MODEL_VERSION=$MODEL_VERSION docker-compose pull
+           APP_VERSION=$APP_VERSION MODEL_VERSION=$MODEL_VERSION docker-compose down --rmi all
            APP_VERSION=$APP_VERSION MODEL_VERSION=$MODEL_VERSION docker-compose up -d
