@@ -16,5 +16,5 @@ services:
     image: nathaliesaintgeours/demo_mlflow_model:${MODEL_VERSION}
     container_name: demo_model
     ports:
-        - "5001:8080"
+        - "8080:8080"
     restart: unless-stopped
