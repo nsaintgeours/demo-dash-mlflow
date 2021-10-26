@@ -270,7 +270,7 @@ Il nous faut donc installer Docker, une seule fois, sur notre serveur virtuel EC
 $ ssh -i ec2_admin.pem ec2-user@18.117.63.135
 ```
 
-- une fois connectée au serveur EC2, installer docker : 
+- une fois connectée au serveur EC2, installer Docker : 
 
 ```
 [ec2-user@ip-172-31-41-247 ~]$ sudo yum update -y
@@ -280,7 +280,20 @@ $ ssh -i ec2_admin.pem ec2-user@18.117.63.135
 [ec2-user@ip-172-31-41-247 ~]$ logout
 ```
 
+
+- nous aurons aussi besoin pour plus tardn d'installer Docker Compose, autant le faire dès maintenant : 
+
+```
+[ec2-user@ip-172-31-41-247 ~]$ wget https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) 
+[ec2-user@ip-172-31-41-247 ~]$ sudo mv docker-compose-$(uname -s)-$(uname -m) /usr/local/bin/docker-compose
+[ec2-user@ip-172-31-41-247 ~]$ sudo chmod -v +x /usr/local/bin/docker-compose
+```
+
+
 Ca y est c'est fait !
+
+> 📝 Note : en cas de souci, [plus d'infos par ici](https://www.cyberciti.biz/faq/how-to-install-docker-on-amazon-linux-2/).
+
 
 **Vérification**
 
@@ -295,6 +308,14 @@ Vérifier que docker y est bien installé :
 ```
 [ec2-user@ip-172-31-41-247 ~]$ docker --version
 ```
+
+
+Vérifier que docker-compose y est bien installé :
+
+```
+[ec2-user@ip-172-31-41-247 ~]$ docker-compose --version
+```
+
 
 
 ### 2.6 Déployer notre application sur le serveur virtuel EC2
@@ -414,3 +435,224 @@ Pour arrêter notre application, une seule commande suffit :
 ```
 $ docker-compose down --rmi all
 ```
+
+
+## 3. Déploiement automatisé avec Github
+
+
+### 3.1. Versionner le code source de notre projet avec Github
+
+**Prérequis** 
+
+- avoir installé Git sur mon PC, et savoir l'utiliser
+
+**Etapes**
+
+- se créer un compte personnel gratuit sur [Github](github.com) : le mien a pour nom  *[https://github.com/nsaintgeours](https://github.com/nsaintgeours)*
+
+- sur mon compte Github, créer un nouveau repository : menu *Repositories / New*, l'appeler `demo`. On suit les options par défaut proposées par Github : on indique que le projet est privé, et on l'initialise avec un fichier `README` et un fichier `.gitignore`.
+
+- sur mon compte Github, récupérer l'adresse du nouveau repository : aller sur la page principale du repository, puis bouton *Code*. L'adresse de mon repo est :  `git@github.com:nsaintgeours/demo.git`
+
+
+- clé SSH pour Github **A PRECISER**
+
+- On va maintenant synchroniser le projet Python qi existe déjà sur notre PC avec le nouveau repository que l'on vient de créer sur Github. Pour cela, dans *PyCharm* sur son PC, on ouvre un terminal `Git Bash`, on se place dans le dossier `C:\dev\demo` qui contient notre projet, et on le synchronise avec les commandes suivantes :  
+
+```
+C:\dev\demo> git init
+C:\dev\demo> git remote add origin git@github.com:nsaintgeours/demo.git
+C:\dev\demo> git fetch -a
+C:\dev\demo> git pull origin master
+```
+
+- Il nous reste à pousser le code de notre PC vers le repository sur Github, sur une nouvelle branche que l'on nomme `bootstrap` :  
+
+```
+$ git branch bootstrap
+$ git checkout bootstrap
+$ git add src
+$ git add requirements.txt
+$ git add Dockerfile
+$ git add docker-compose.yml
+$ git commit -m "project bootstrap"
+$ git push --set-upstream origin bootstrap
+```
+
+Et voilà ! 
+
+
+### 3.2. Créer un accès SSH de Github vers le serveur AWS
+
+Pour pouvoir déployer l'application chez AWS depuis Github (déploiement automatisé), il faut d'abord que Github soit autorisé à accéder au serveur virtuel EC2 chez AWS. Pour cela, il nous faut créer une paire de clés SSH : notre serveur virtuel EC2 aura une clé publique, tandis que notre compte Github aura la clé privée correspondant à cette clé publique. 
+
+**Etapes :**
+
+- se connecter au serveur virtuel EC2 chez AWS (cf. section 2.)
+- créer une paire de clés SSH de type RSA, de loingueur 4096, avec pour nom *GithubActions*. On laisse les noms de fichiers par défaut, et on ne donne pas de passphrase :  
+
+```
+$ cd ~/.ssh
+$ ssh-keygen -t rsa -b 4096 -C GithubActions
+
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/ec2-user/.ssh/id_rsa): 
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again: 
+```
+
+- deux fichiers ont été créés dans le dossier `.ssh` : une clé publique `id_rsa.pub`, et une clé privée `id_rsa`
+- il faut ajouter la clé publique nouvellement créée à la liste des clés publiques "autorisées" sur notre serveur virtuel EC2, qui sont stockées dans le fichier `authorized_keys` : 
+
+```
+ec2-user@ip-172-26-15-30:~/.ssh$ cat id_rsa.pub >> authorized_keys
+```
+
+- on télécharge ensuite le fichier contenant la **clé privée** `id_rsa` **sur notre PC avec WinSCP**
+
+
+- on peut maintenant supprimer les deux fichiers contenant la clé publique et la clé privée de notre serveur virtuel EC2 : 
+
+```
+ec2-user@ip-172-26-15-30:~/.ssh$ rm id_rsa.pub
+ec2-user@ip-172-26-15-30:~/.ssh$ rm id_rsa
+```
+
+- sur notre PC, ouvir le fichier `id_rsa` contenant la clé SSH privée (que l'on vient de télécharger) avec Notepad++
+
+- dans Notepad++, copier le contenu du fichier `id_rsa` avec `Ctrl+A`
+
+- ouvrir le repository `demo` sur notre compte Github, et aller dans le menu **[Setting / Secrets / Action secrets](https://github.com/nsaintgeours/demo/settings/secrets/actions)**
+
+- cliquer sur le bouton **New repository secret**, et spécifier : 
+
+		- *Name* : `AWS_EC2_SSH_KEY`
+		- *Value* : copier ici le contenu de la clé SSH privée
+
+Et voilà ! Notre repository Github peut désormais accèder en SSH à notre serveur virtuel EC2 chez AWS. 
+
+
+### 3.3. Mettre en place un processus de déploiement avec Github Actions
+
+Nous allons utiliser les fonctionnalités de **[Github Actions](https://github.com/nsaintgeours/demo/actions)** pour automatiser le déploiement de notre application sur le serveur virtuel EC2 chez AWS. Nous aurons à la fin un simple bouton dans GitHub qui nous permettra de déployer notre application dans le cloud à la demande. Le processus de déploiement automatisé exécutera les tâches suivantes :  
+
+- construire l'image Docker de notre application à partir du `Dockerfile`
+- pousser cette image Docker sur notre dépôt distant sur **DockerHub**
+- se connecter en SSH au serveur virtuel EC2 chez AWS
+- sur le serveur virtuel EC2, télécharger l'image Docker de notre application
+- sur le serveur virtuel EC2, lancer notre application conténeurisée à partir du fichier `docker-compose.yml`
+
+
+**Etapes**  
+
+- notre processus de déploiement automatisé sur Github va avoir besoin de se connecter à notre compte sur DockerHub. Nous allons donc ajouter le mot de passe de notre compte DockerHub aux clés secrètes de notre repository Github. Pour cela, ouvrir le repository `demo` sur notre compte Github, et aller dans le menu **[Setting / Secrets / Action secrets](https://github.com/nsaintgeours/demo/settings/secrets/actions)**, cliquer sur le bouton **New repository secret**, et spécifier : 
+
+		- *Name* : `DOCKER_PASSWORD`
+		- *Value* : donner ici le mot de passe de mon compte DockerHub
+
+
+- nous allons maintenant définir notre processus de déploiement automatisé en créant un nouveau fichier `/.github/workflows/deploy.yml` dans notre projet. On ne détaille pas comment ajouter ce fichier au code source du projet (création de branche, commit, pull request, etc.). Voici le contenu de ce fichier `deploy.yml` :
+
+```
+name: Deploy to production server
+
+on:
+  workflow_dispatch
+
+env:
+    APP_NAME: demo
+    APP_VERSION: latest
+    DOCKER_USER: nathaliesaintgeours
+    DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+    SSH_HOST: 18.117.63.135
+    SSH_USERNAME: ec2-user
+    SSH_KEY: ${{ secrets.AWS_EC2_SSH_KEY }}
+
+jobs:
+
+   publish_docker:
+     runs-on: ubuntu-latest
+
+     steps:
+     - uses: actions/checkout@v2
+
+     - name: Build Docker container
+       run: docker build -t $DOCKER_USER/$APP_NAME:$APP_VERSION .
+
+     - name: Docker login
+       run: docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+
+     - name: Publish dockerized app on Docker Hub
+       run: docker push $DOCKER_USER/$APP_NAME:$APP_VERSION
+
+   deploy_production:
+     runs-on: ubuntu-latest
+
+     needs: publish_docker
+
+     steps:
+     - uses: actions/checkout@v2
+
+     - name: Copy Docker Compose file to production server (through SSH)
+       uses: appleboy/scp-action@master
+       with:
+         host: $SSH_HOST
+         username: $SSH_USERNAME
+         key: $SSH_KEY
+         source: "docker-compose.yml"
+         target: "~"
+
+     - name: Run Docker containers on production server (through SSH)
+       uses: appleboy/ssh-action@master
+       with:
+         host: $SSH_HOST
+         username: $SSH_USERNAME
+         key: $SSH_KEY
+         script: |
+           cd ~
+           sudo service docker start           
+           docker-compose down --rmi all
+           docker-compose up -d
+```
+
+Prenons le temps de décortiquer un peu le contenu de ce fichier. On commence par dire comment sera déclenché notre processus de déploiement automatisé : 
+
+```
+on:
+  workflow_dispatch
+```
+
+Ceci signifie que notre processus de déploiement sera déclenché manuellement. On pourrait aussi décider de le déclencher automatiquement à chaque merge dans master, ou bien à chaque tag, etc.
+
+
+On définit ensuite plusieurs variables d'environnement qui seront utilisées par notre processus de déploiement :  
+
+```
+env:
+    APP_NAME: demo
+    APP_VERSION: latest
+    DOCKER_USER: nathaliesaintgeours
+    DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
+    SSH_HOST: 18.117.63.135
+    SSH_USERNAME: ec2-user
+    SSH_KEY: ${{ secrets.AWS_EC2_SSH_KEY }}
+```
+
+Parmi ces variables d'environnement, deux sont récupérées depuis la liste des "secrets" de notre repository Github. Cela évite que les mots de passe soient renseignés en clair dans le code !
+
+
+
+On définit ensuitee deux `jobs`, nommés `publish_docker` et `deploy_production`. Ces jobs seront **exécutés sur un serveur de Github** : 
+
+- le job `publish_docker` comprend trois étapes : construction de l'image Docker de notre application, connexion à DockerHub, push de l'image sur DockerHub.
+- le job `deploy_production` est un peu plus complexe. Il s'exécute une fois que le job `publish_docker` est terminé (`needs: publish_docker`). Il utilise les deux extensions `appleboy/scp-action@master` et `appleboy/ssh-action@master` pour se conneter à notre serveur virtuel EC2 depuis le serveur Github (via SSH), et y exécuter des commandes. Dans une première étape, il copie le fichier `docker-compose.yml` depuis notre code source vers le serveur virtuel EC2 chez AWS. Dans une seconde étape il lance l'application dockerisée sur notre serveur virtuel EC2 avec `docker-compose`, qui télécharge l'image Docker de notre application depuis le DockerHub puis lance le conteneur.
+
+
+**Vérification**
+ 
+Maintenant que notre processus de déploiement automatisé est défini (oce mergé dans la branche `master`), nous pouvons le lancer depuis notre repository Github. 
+Aller dans le [menu *Actions*](https://github.com/nsaintgeours/demo/actions), sélectionner le workflow *Deploy to production server*, puis bouton *Run workflow*. C'est parti, l'application se déploie sur le serveur virtuel EC2 chez AWS !
+
+
+> 📝 Note : attention, le déploiement ne fonctionnera que si notre serveur virtuel EC2 est allumé à ce moment là... On peut allumenr le serveur virtuel EC2 depuis la [console de gestion du service AWS EC2](https://us-east-2.console.aws.amazon.com/ec2/v2/home?region=us-east-2#Instances).
+
