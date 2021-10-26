@@ -1,4 +1,4 @@
-# Démo minimaliste Dash et MLFlow
+# Démo : une appli Dash et MLFlow déployée sur AWS EC2
 
 ## 1. Créer une application Dash et la déployer en local
 
