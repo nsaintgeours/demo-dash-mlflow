@@ -907,4 +907,66 @@ Si on veut requêter l'API en étant déjà connecté sur le serveur virtuel EC2
 
 ### 5.2. Créer un accès SSH d'un serveur distant vers notre repository sur Github
 
+Pour déployer notre application sur le serveur virtuel EC2 d'AWS, nous avons fait le choix de passer par des images Docker publiées sur DockerHub. Ces images sont construites sur un serveur de Github lors de l'exécution du workflow de déploiement automatisé, elles sont poussées sur DockerHub, puis elles sont téléchargées depuis le serveur virtuel EC2. 
+
+Il existait une autre option, que nous n'avons pas mise en oeuvre : on aurait pu choisir de synchroniser le code source de notre application sur le serveur virtuel EC2, puis de construire les images Docker directement sur le serveur virtuel EC2, et enfin de lancer nos conteneurs. Nous n'aurions alors pas eu à push/pull les images Docker sur DockerHub.
+
+Pour mettre en oeuvre cette option, il faut que le serveur virtuel EC2 puisse accéder au repository Github qui contient le code source de notre application. **Il faut donc que notre serveur virtuel EC2 puisse accéder en SSH à notre dépôt Github**. Pour ce faire, on suit les étapes décrites ci-dessous. 
+
+**Création des clés SSH**
+
+* se connecter au serveur EC2 chez AWS (par exemple en SSH depuis un terminal `bash` sur mon PC)
+* créer une paire de clés SSH, en nommant les fichiers `demo_deploy_key`, et en ne donnant pas de passphrase : 
+
+```
+ec2-user@ip-172-26-15-30:~$ cd /home/ec2-user/.ssh
+ec2-user@ip-172-26-15-30:~/.ssh$ ssh-keygen
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/ec2-user/.ssh/id_rsa): demo_deploy_key
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again: 
+```
+
+* deux fichiers ont été créés dans le dossier `.ssh` : une clé publique `demo_deploy_key.pub`, et une clé privée `demo_deploy_key`
+
+**Enregistrement de la clé privée sur le serveur AWS**
+
+* on va ajouter un nouvel hôte distant dans la configuration SSH de notre serveur virtuel EC2, en indiquant que l'on accédera à cet hôte distant en utilisant la clé privée nouvellement créée. Pour cela, on ajoute les lignes suivantes dans le fichier `/home/ec2-user/.ssh/config` : 
+
+```
+Host github.com-demo
+    Hostname github.com
+    IdentityFile=/home/ec2-user/.ssh/demo_deploy_key
+```
+
+> 📝 Si le fichier `/home/ec2-user/.ssh/config` n'existe pas, il faut d'abord le créer. Pour créer / éditer ce fichier, on peut soit passer par un éditeur de code dans la console bash (mais je sais pas les utiliser), soit créer / éditer le fichier en local sur son PC, puis le copier sur le serveur AWS en utilisant un logiciel comme WinSCP. 
+
+**Enregistrement de la clé publique sur notre compte Github**
+
+* en utilisant un logiciel comme [WinSCP](https://winscp.net/eng/download.php) ou la ligne de commande, copier la clé **publique**  `demo_deploy_key.pub` depuis le serveur virtuel EC2 vers votre PC.
+* une fois sur votre PC, ouvrir le fichier  `demo_deploy_key.pub` avec **Notepad++**
+* ouvrir le dépôt du projet sur notre compte Github
+* dans Github, aller dans le menu **Setting / Deploy keys**
+* cliquer sur le bouton **Add deploy key**, et spécifier : 
+   
+  - *Title* : `DEPLOY_TO_EC2`
+  - *Key* : copier ici le contenu de la clé SSH publique
+
+**Synchronisation du code source sdu projet ur le serveur EC2**
+
+Enfin, je dois définir un dépot git en local sur mon serveur virtuel EC2 et le lier à mon déppot sur Github. 
+Pour cela, je me place dans le dossier `/home/ec2-user/demo` (à créer s'il n'existe pas), puis :  
+
+```
+ec2-user@ip-172-26-15-30:~$ cd /home/ec2-user/demo
+ec2-user@ip-172-26-15-30:~$ git init
+ec2-user@ip-172-26-15-30:~$ git remote set-url origin git@github.com-demo:nsaintgeours/demo.git
+```
+
+Et voilà ! Notre serveur virtuel EC2 peut désormais synchroniser le code source de notre application depuis notre dépôt Github. 
+
+
+
+
+
 
