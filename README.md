@@ -651,8 +651,260 @@ On définit ensuitee deux `jobs`, nommés `publish_docker` et `deploy_production
 **Vérification**
  
 Maintenant que notre processus de déploiement automatisé est défini (oce mergé dans la branche `master`), nous pouvons le lancer depuis notre repository Github. 
-Aller dans le [menu *Actions*](https://github.com/nsaintgeours/demo/actions), sélectionner le workflow *Deploy to production server*, puis bouton *Run workflow*. C'est parti, l'application se déploie sur le serveur virtuel EC2 chez AWS !
+Aller dans le [menu *Actions*](https://github.com/nsaintgeours/demo/actions), sélectionner le workflow *Deploy to production server*, puis bouton *Run workflow*. C'est parti, l'application se déploie sur le serveur virtuel EC2 chez AWS ! On peut aller voir notre application **en ouvrant l'URL `18.117.63.135:8050` dans un navigateur web**.
+
 
 
 > 📝 Note : attention, le déploiement ne fonctionnera que si notre serveur virtuel EC2 est allumé à ce moment là... On peut allumenr le serveur virtuel EC2 depuis la [console de gestion du service AWS EC2](https://us-east-2.console.aws.amazon.com/ec2/v2/home?region=us-east-2#Instances).
+
+
+
+## 4. Ajouter un modèle prédictif avec MLFlow
+
+
+### 4.1. Entraîner et sauvegarder un modèle prédictif avec MLflow
+
+On commence par compléter notre code source Python pour venir entraîner et sauvegarder un simple modèle de régression linéaire. 
+Nous allons pour cela utiliser les librairies `numpy`, `scikit-learn` et `mlflow`. On va entraîner notre modèle sur un jeu de données généré aléatoirement, c'est juste à titre d'illustration.
+
+**Etapes**
+
+* compléter le fichier `./requirements.txt` comme suit : 
+
+```
+dash
+mlflow
+numpy
+scikit-learn
+```
+
+* dans *PyCharm*, ouvrir un terminal puis installer les librairies dans l'environnement `conda` associé au projet : 
+
+```
+C:\dev\demo> conda activate demo
+C:\dev\demo (demo)> pip install -r requirements.txt
+```
+
+* créer un nouveau script Python `C:/dev/demo/scripts/train_model.py` avec le contenu suivant :  
+
+```
+import mlflow
+import numpy as np
+from sklearn.linear_model import LinearRegression
+
+model = LinearRegression()
+model.fit(
+    X=np.random.rand(1000, 3),
+    y=np.random.rand(1000, 1)
+)
+mlflow.sklearn.save_model(sk_model=model, path='../mlflow_model')
+
+```
+
+* exécuter le script (bouton *Run* dans *PyCharm*) : un nouveau dossier `mlflow_model` est créé à la racine du projet, il contient le modèle de régression linéaire entraîné, sauvegardé au format MLflow.
+
+* pousser ces modifications sur votre repository GitHub
+
+### 4.2. Déploiement
+
+Nous allons maintenant déployer notre modèle prédictif sur notre serveur virtuel EC2, sous la forme d'une API qui recevra en entrée les valeurs de `x1`, `x2`, `x3` (i.e., les trois entrées du modèle) renverra la valeur `y` prédite par le modèle. Les étapes que l'on va suivre sont les suivantes : 
+* ajouter une étape dans le processus de déploiement avec **Github Actions**
+* compléter notre fichier `docker-compose.yml` 
+* configurer le pare-feu de notre serveur virtuel EC2 
+* déployer enfin notre application complète sur le serveur virtuel EC2
+
+**4.2.1. Compléter le workflow de déploiement avec Github Actions**
+
+Nous allons ajouter un `job` nommé `publish_mlflow_model` dans le processus de déploiement automatisé sur **Github Actions**. Ce nouveau job va exécuter les tâches suivantes :    
+
+* construction d'une image Docker pour notre modèle de régression en utilisant les fonctionnalités de déploiement de la librairie `MLflow`
+* publication de cette image Docker sur DockerHub
+
+*Etapes*
+
+- Voici la section à ajouter au fichier `./.github/workflows/deploy.yml` pour définir ce nouveau job : 
+
+```
+(...)
+
+	publish_mlflow_model:
+	     runs-on: ubuntu-latest
+
+	     steps:
+	     - uses: actions/checkout@v2
+
+	     - name: Set up Python 3.9
+	       uses: actions/setup-python@v2
+	       with:
+		 python-version: 3.9
+
+	     - name: Install mlflow
+	       run: |
+		 python -m pip install --upgrade pip
+		 pip install mlflow
+
+	     - name: Build Docker container from MLflow model
+	       run: |
+		 mlflow models build-docker -m  ${GITHUB_WORKSPACE}/mlflow_model -n "$MODEL_NAME"
+
+	     - name: Docker login
+	       run: |
+		 docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+
+	     - name: Publish dockerized model on Docker Hub
+	       run: |
+		 docker tag $MODEL_NAME $DOCKER_USER/$MODEL_NAME:$MODEL_VERSION
+		 docker push $DOCKER_USER/$MODEL_NAME:$MODEL_VERSION
+
+(...)
+```
+
+- ce nouveau job utilise deux variables d'environnement `MODEL_NAME` et `MODEL_VERSION` qui spécifient le nom du conteneur Docker construit à partir du modèle de régression, et sa version. On doit donc ajouter ces deux nouvelles variables d'environnement dans la section `env` du fichier `./.github/workflows/deploy.yml` que l'on complète ainsi :
+
+```
+env:
+    (...)
+    
+    MODEL_NAME: demo_mlflow_model
+    MODEL_VERSION: latest
+
+    (...)
+ ```
+
+- enfin, on doit préciser que le job déjà existant `deploy_production` doit maintenant attendre que les deux jobs `publis_docker` et `publish_mlflow_model` soient terminés avant de se lancer. On édite donc la description du job comme suit : 
+
+```
+   deploy_production:
+     runs-on: ubuntu-latest
+
+     needs: [publish_docker, publish_mlflow_model]
+```
+ 
+Et voilà, notre workflow de déploiement automatisé est prêt !
+
+
+> 📝 Note : je n'ai malheureusement pas pu tester ce workflow de déploiement de manière manuelle, que ce soit sur mon PC ou sur le serveur virtuel EC2 chez AWS. En effet, la construction de l'image Docker du modèle de régression avec la commande `mlflow models build-docker` m'a posé quelques soucis... Sur mon PC, cette commande plante, visiblement à cause de problèmes de compatibilité entre Docker et Windows, je ne suis pas allée plus loin dans la résolution du problème. Sur le serveur virtuel EC2 d'AWS, le problème est différent : je n'ai pas les droits suffisants sur ce serveur pour installer `mlflow` sans galérer. Le gestionnaire de paquet `pip` n'est pas présent par défaut pour le serveur, et je ne suis pas parvenue à l'installer correctement. J'ai laissé tomber ! Donc la commande de construction de l'image Docker du modèle de régression avec `mlflow` ne fonctionne que sur les serveurs Linux de Github.
+
+
+**4.2.2 Définir un nouveau service avec `docker-compose`**
+
+Nous allons maintenant éditer le fichier `./docker-compose.yml`, pour indiquer que notre application a désormais besoin de deux conteneurs Docker pour fonctionner : un premier conteneur Docker nommé `demo_dashboard` pour l'application Dash, et un second conteneur nommé `demo_model` pour notre modèle de régression. Ces deux conteneurs seront lancés à partir des deux images Docker qui auront été publiées sur DockerHub par notre workflow de déploiement automatisé (voir étape précédente 4.2.2). A chacun de ces deux conteneurs correspond un *service*, nommés respectivement `dashboard` et `model`. 
+
+Le conteneur `demo_model` qui sera lancé avec notre modèle de régression exposera son API sur le **port `8080`** : c'est le port utilisé par défaut par `mlflow`. La redirection de port `8080:8080` fait le choix de conserver ce port par défaut et de ne pas le rediriger sur un autre port. 
+
+Enfin, nous allons avoir besoin de **faire communiquer nos deux services `dashboard` et `model` ensemble** ! En effet, nous souhaitons pouvoir appeler notre modèle de régression depuis l'application Dash. Pour cela, nous faisons passer à notre service `dashboard`, et à son conteneur Docker `demo_dashboard`, une nouvelle variable d'environnement que l'on nomme `MODEL_API`, avec pour valeur `http://model:8080/invocations`. L'adresse `http://model:8080` signifie qu'il faut contacter le conteneur Docker associé au service nommé `model` dans `docker-compose.yml`, sur le port `8080`. L'ajout du endpoint `invocations` permet d'accéder au endpoint de prédiction de notre modèle de régression (voir aide en ligne de `mlflow`).
+
+Voici donc notre nouvelle version du fichier `docker-compose.yml` : 
+
+```
+version: "3.7"
+
+services:
+
+  dashboard:
+    image: nathaliesaintgeours/demo:${APP_VERSION}
+    container_name: demo_dashboard
+    ports:
+      - "8050:8050"
+    environment:
+      - TARGET=LIVE
+      - MODEL_API=http://model:8080/invocations
+    restart: unless-stopped
+
+  model:
+    image: nathaliesaintgeours/demo_mlflow_model:${MODEL_VERSION}
+    container_name: demo_model
+    ports:
+        - "8080:8080"
+    restart: unless-stopped
+```
+
+> 📝 Note : dans un fichier `docker-compose.yml`, il faut veiller à ce que les différents services communiquent sur des ports différents, sinon ça crée des interférences.
+
+
+**4.2.3. Configuration du pare-feu de l'instance EC2 chez AWS**
+
+L'API de prédiction créée par le conteneur `demo_model` va utiliser le port `8080` pour afficher son contenu (j'aurais pu choisir un autre port si je l'avais souhaité, en définissant une redirection de ports dans le fichier `docker-compose.yml`). Je dois donc ouvrir ce port `8080` sur mon serveur virtuel EC2. 
+Cela se fait sur mon compte AWS, dans la [page de gestion des "Groupes de sécurité"](https://us-east-2.console.aws.amazon.com/ec2/v2/home?region=us-east-2#SecurityGroup:securityGroupId=sg-0f0503eaebf726097). Il faut redémarrer le serveur virtuel EC2 pour que la modification soit bien prise en compte. 
+
+
+> 📝 Note : l'ouverture du port `8080` vers l'extérieur n'est en fait nécessaire que si je veux accéder à l'API de prédiction directement depuis l'extérieur de mon serveur virtuel EC2, sans passer par mon application Dash, par exemple depuis mon PC. Je n'ai pas besoin d'ouvrir ce port vers l'extérieur pour que mes deux services `dashboard` et `model` définis dans le fichier `docker-compose.yml` puissent communiquer, car ils se trouvent tous les deux sur mon serveur virtuel EC2. 
+
+**4.2.4. Requêter l'API de prédiction via l'application Dash**
+
+Nous allons maintenant compléter le code notre application web, afin de permettre à l'utilisateur de :
+* saisir les valeurs des trois entrées du modèle `x1`, `x2` et `x3`
+* lancer le modèle de régression avec ces trois valeurs d'entrées, en requêtant l'API exposée par notre service `model` sur le port `8080`
+* afficher le résultat `y` fourni par le modèle de régression
+
+Je passe le détail des modifications faites au code, on peut aller voir directement [le dossier ./src/ du projet](https://github.com/nsaintgeours/demo/tree/master/src) pour voir comment ces différentes fonctionnalités ont été implémentées.
+
+Je fais seulement un zoom sur la manière dont on requête en Python l'API de prédiction exposée par notre service `model` sur le port `8080` . Cette requête est faite par la fonction `predict()` définie dans le fichier [`mlflow_model_client.py`](https://github.com/nsaintgeours/demo/blob/master/src/mlflow_model_client.py) : 
+
+```
+"""
+Function that sends a request to the MLflow model REST API to get a prediction from some input data.
+"""
+import os
+from typing import List
+
+import requests
+
+
+def predict(x: List[float]) -> float or str:
+    try:
+        response = requests.post(
+            url=os.getenv("MODEL_API"),
+            headers={'content-type': 'application/json'},
+            json={"data": [x]},
+        )
+        response.raise_for_status()
+        output = str(response.json()[0])
+    except (requests.HTTPError, IOError) as err:
+        output = str(err)
+    return output
+```
+
+On utilise la librairie `requests` pour requêter l'API de prédiction. L'URL de l'API est donnée par la variable d'environnement `MODEL_API`, dont la valeur a été définie dans le fichier `docker-compose.yml`, et passée au conteneur `demo_dashboard` lors de son lancement.
+
+
+**4.2.5. Déployer l'application sur le serveur virtuel EC2**
+
+Ca y est, nous sommes prêts !
+
+Une fois toutes les modifications commitées et mergées sur la branche `master` du repository `demo` de notre compte Github, nous pouvons enfin déployer notre application complète sur le serveur virtuel EC2 chez AWS. 
+
+Pour cela : 
+
+* si cela n'est pas déjà fait, allumer le serveur virtuel EC2 chez AWS : cela se fait via la [console de gestion du service AWS EC2](https://us-east-2.console.aws.amazon.com/ec2/v2/home?region=us-east-2#Instances).
+
+* ouvrir un navigateur web et aller sur son compte **GitHub**, sur le [repository `demo`](https://github.com/nsaintgeours/demo/tree/master/src)
+
+* ouvrir l'onglet **Actions**
+
+* sélectionner le workflow *Deploy to production server*, puis cliquer sur le bouton *Run workflow*
+
+C'est parti ! Au bout de quelques (dizaines) de minutes, votre application est déployée sur le serveur EC2 chez AWS. 
+
+Pour vérifier que ça marche,  on peut aller voir notre application **en ouvrant l'URL `18.117.63.135:8050` dans un navigateur web**.
+
+
+## 5. Bonus
+
+### 5.1. Requêter l'API de prédiction en ligne de commande
+
+
+On peut utiliser la commande `curl` dans un terminal `bash` pour requêter l'API de prédiction exposée par notre conteneur Doker `demo_model` sur le port `8080`.
+Pour cela : 
+
+```
+curl 18.117.63.135:8080/invocations -H 'Content-Type: application/json' -d '{ "data": [[1, 2, 3]]}'
+```
+
+On doit recevoir une valeur numérique en réponse. 
+
+Si on veut requêter l'API en étant déjà connecté sur le serveur virtuel EC2, on peut utiliser l'adresse `0.0.0.0:8080` au lieu de `18.117.63.135:8080`.
+
+### 5.2. Créer un accès SSH d'un serveur distant vers notre repository sur Github
+
 
