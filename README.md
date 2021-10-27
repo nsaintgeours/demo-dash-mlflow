@@ -1,5 +1,41 @@
 # Démo : une appli Dash et MLFlow déployée sur AWS EC2
 
+## Table des matières
+
+- [1. Créer une application Dash et la déployer en local](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#1-cr%C3%A9er-une-application-dash-et-la-d%C3%A9ployer-en-local)
+
+   - [1.1. Création du projet Python](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#11-cr%C3%A9ation-du-projet-python)
+   - [1.2. Conténeuriser l'application avec Python](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#12-cont%C3%A9neuriser-lapplication-avec-docker)
+   - [1.3. Déployer notre application web en local](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#13-d%C3%A9ployer-notre-application-web-en-local)
+   - [1.4. Publier l'application sur Docker Hub](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#14-publier-lapplication-sur-docker-hub)
+
+- [2. Déployer notre application web sur AWS](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#2-d%C3%A9ployer-notre-application-web-sur-aws)
+
+   - [2.1. Créer une instance EC2 (serveur virtuel) sur AWS](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#21-cr%C3%A9er-une-instance-ec2-serveur-virtuel-sur-aws)
+   - [2.2. Me connecter à mon serveur virtuel EC2 chez AWS](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#22-me-connecter-%C3%A0-mon-serveur-virtuel-ec2-chez-aws)
+   - [2.3. Configuration du pare-feu de mon serveur virtuel EC2](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#23-configuration-du-pare-feu-de-mon-serveur-virtuel-ec2)
+   - [2.4. Installer Docker sur mon serveur virtuel EC2](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#24-installer-docker-sur-mon-serveur-virtuel-ec2)
+   - [2.5. Déployer notre application sur le serveur virtuel EC2](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#25-d%C3%A9ployer-notre-application-sur-le-serveur-virtuel-ec2)
+   - [2.6. Utiliser docker-compose pour faciliter le déploiement](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#26-utiliser-docker-compose-pour-faciliter-le-d%C3%A9ploiement)
+
+- [3. Déploiement automatisé avec Github Actions](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#3-d%C3%A9ploiement-automatis%C3%A9-avec-github)
+
+   - [3.1. Versionner le code source de notre projet avec Github](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#31-versionner-le-code-source-de-notre-projet-avec-github)
+   - [3.2. Créer un accès SSH de Github vers le serveur AWS](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#32-cr%C3%A9er-un-acc%C3%A8s-ssh-de-github-vers-le-serveur-aws)
+   - [3.3. Mettre en place un processus de déploiement avec Github Actions](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#33-mettre-en-place-un-processus-de-d%C3%A9ploiement-avec-github-actions)
+
+- [4. Ajouter un modèle prédictif avec MLFlow](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#4-ajouter-un-mod%C3%A8le-pr%C3%A9dictif-avec-mlflow)
+
+   - [4.1. Entraîner et sauvegarder un modèle prédictif avec MLflow](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#41-entra%C3%AEner-et-sauvegarder-un-mod%C3%A8le-pr%C3%A9dictif-avec-mlflow)
+   - [4.2. Déploiement](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#42-d%C3%A9ploiement)
+
+- [5. Bonus](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#5-bonus)
+
+   - [5.1. Requêter l'API de prédiction en ligne de commande](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#51-requ%C3%AAter-lapi-de-pr%C3%A9diction-en-ligne-de-commande)
+   - [5.2. Créer un accès SSH d'un serveur distant vers notre repository sur Github](https://github.com/nsaintgeours/demo/blob/add-doc/README.md#52-cr%C3%A9er-un-acc%C3%A8s-ssh-dun-serveur-distant-vers-notre-repository-sur-github)
+
+
+
 ## 1. Créer une application Dash et la déployer en local
 
 ### 1.1. Création du projet Python
@@ -318,7 +354,7 @@ Vérifier que docker-compose y est bien installé :
 
 
 
-### 2.6 Déployer notre application sur le serveur virtuel EC2
+### 2.5 Déployer notre application sur le serveur virtuel EC2
 
 
 Ca y est, nous sommes prêts à déployer notre application Dash dans le cloud !
@@ -373,7 +409,7 @@ $ docker system prune
 
 
 
-### 2.7 Utiliser docker-compose pour faciliter le déploiement
+### 2.6 Utiliser docker-compose pour faciliter le déploiement
 
 
 **En bref**  
